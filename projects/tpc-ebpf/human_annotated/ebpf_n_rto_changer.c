@@ -131,10 +131,10 @@
   "call_depth": -1,
   "humanFuncDescription": [
     {
-      "description": "",
-      "author": "",
-      "authorEmail": "",
-      "date": ""
+      "description": "The function inner_loop is a utility function that takes srh_id and dst_infos as arguments. srh_id is an unsigned 32 bit integer, and dst_infos is a structure containing ip6_addr_t struct and srh_record_t struct, and an unsigned 32 bit integer max_reward. The return type of the function is 32 bit unsigned integer. The srh_id with valid entry greater than the passed srh_id is returned. Otherwise if the entry is either invalid or not found it returns 0. For a given dst_info, srh_id is found by looping from 0 to MAX_SRH_BY_DEST. If any current srh_id is greater than the passed srh_id then the greater srh_id is returned.",
+      "author": "Madhuri Annavazzala",
+      "authorEmail": "madhuriannavazzala@gmail.com",
+      "date": "2023-04-12"
     }
   ],
   "AI_func_description": [
@@ -365,10 +365,10 @@ static __u32 inner_loop(__u32 srh_id, struct dst_infos* dst_infos) {
   "call_depth": -1,
   "humanFuncDescription": [
     {
-      "description": "",
-      "author": "",
-      "authorEmail": "",
-      "date": ""
+      "description": "The function takes pointer to the struct bpf_elf_map, an unsigned 32 bit integer 'key', a void pointer 'id' and a pointer to the struct bpf_sock_ops. The return type of the function is integer. The move_path function looks up the destination information in dst_map using the bpf_map_lookup_elem helper function and id as the key. If the lookup returns a non-NULL value, i.e. the destination is found, then the validity of key is checked.The key needs be greater than or equal to zero and less than MAX_SRH_BY_DEST. If the key is valid, the segment routing header information is stored and the socket options are set. The helper function bpf_setsockopt returns 0 on success, hence the move_path will return 1. If the dst_infos is NULL or invalid, the move_path function returns 0.",
+      "author": "Madhuri Annavazzala",
+      "authorEmail": "madhuriannavazzala@gmail.com",
+      "date": "2023-04-12"
     }
   ],
   "AI_func_description": [
@@ -600,10 +600,10 @@ static int move_path(struct bpf_elf_map *dst_map, void *id, __u32 key, struct bp
   "call_depth": -1,
   "humanFuncDescription": [
     {
-      "description": "",
-      "author": "",
-      "authorEmail": "",
-      "date": ""
+      "description": "This function takes arguments as two pointers to the struct bpf_elf_map, a pointer to the struct bpf_sock_ops, a pointer to the struct flow_tuple, an unsigned 64 bit integer cur_time. The return type of the function is integer. The function create_new_flow_infos creates new flows, allocates memory to the flow, sets the current time in new_flow.last_move_time field. It checks if the dst_info is valid or not by calling a map lookup on dt_map using helper function bpf_map_lookup_elem with flow_id->remote_addr as the key. If valid then it updates the map by inserting the flow to the map using the helper function bpf_map_update_elem. Else, the function returns 1.",
+      "author": "Madhuri Annavazzala",
+      "authorEmail": "madhuriannavazzala@gmail.com",
+      "date": "2023-04-12"
     }
   ],
   "AI_func_description": [
@@ -1112,10 +1112,10 @@ SEC("sockops")
   "call_depth": -1,
   "humanFuncDescription": [
     {
-      "description": "",
-      "author": "",
-      "authorEmail": "",
-      "date": ""
+      "description": "The function takes an argument which is a pointer to the struct bpf_sock_ops. The return type of the function is an integer. The handle_sockop function handles the data and performs related operations on the received flow id at the socket. The helper function bpf_ktime_get_ns returns the time elapsed since system boot in nanoseconds, and it is assigned to a local variable as current time which gets used in this function. If the skops->family is not AF_INET6, the function terminates by returning 0. This is done to only allow flow for scp. Next, the get_flow_id_from_sock function fetches the current flow details from the socket. This flow id is used as a key for retrieving flow_info using the helper function bpf_map_lookup_elem. If the skops->op is set to either BPF_SOCK_OPS_TCP_CONNECT_CB(Calls BPF program right before an active connection is initialized) or BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB(Calls BPF program when a passive connection is established), then move_path is called with the current flow's remote address and key set to 1. If there is no flow_info in the conn_map, new flow_info is written to the conn_map using the function create_new_flow_infos. If this operation is successful, 1 is returned. Otherwise the information of flow_id is retrieved from the conn_map again. If the operation is unsuccessful, 1 is returned. move_path returns 1 on success, 0 on failure which is stored in the rv variable. This value is stored in skops->reply. If the skops->op is set to BPF_SOCK_OPS_STATE_CB(Change in the stage of the TCP connection), then the flow is closed and maps are cleaned by invoking bpf_map_delete_elem on the current flow_id.If the skops->op is set to BPF_SOCK_OPS_RTT_CB(called on every RTT), it means that the flow was rerouted due to an issue. The last valid flow is looked up and updated by invoking the bpf_map_update_elem. If skops->op is set to BPF_SOCK_OPS_DUPACK that is if a duplicate flow is encountered, the flow_info->retrans_count is incremented by 1. A check is performed to ensure that the data was acknowledged or not. If yes, then the map is updated with the flow_id and flow_info. A check is performed to ensure that the retransmission count is strictly less than the RTO(Recovery Time Objective). If yes, the flow information is updated. A check is performed to check of the key_dup is the same as flow_info->srh_id. If yes, then the map is updated by invoking the bpf_map_update_elem. The move_path function is called with this key_dup to move the flow to flow_id.remote_addr. The fields such as flow_info->srh_id, flow_info->last_move_time and flow_info->retrans_count are updated before taking a snapshot. If skops->op is set to BPF_SOCK_OPS_RTO_CB(Called when an RTO has triggered) the validity of the flow is initially checked. If it is invalid, the function terminates by returning 1. Else, the retransmission count is incremented by 1. A check is performed to ensure that the data was acknowledged. If so, the fields flow_info->last_snd_una and flow_info->retrans_count are updated. If cur_time - flow_info->last_move_time is less than MIN_TIME_BEFORE_MOVING_NS, the map is updated by invoking the bpf_map_update_elem. If the number of retransmissions is less than 3, then the map is updated before taking a screenshot and breaking. Else, the path is switched by invoking the move_path function and if a valid return value is returned, then the flow information such as flow_info->srh_id, flow_info->last_move_time and flow_info->retrans_count are updated before taking a snapshot of the flow and updating the map. If skops->op does not match any of the above cases, the returned value(rv) is stored in skops->reply and the function returns 0.",
+      "author": "Madhuri Annavazzala",
+      "authorEmail": "madhuriannavazzala@gmail.com",
+      "date": "2023-04-12"
     }
   ],
   "AI_func_description": [
